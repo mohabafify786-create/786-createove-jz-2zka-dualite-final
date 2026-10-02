@@ -1,0 +1,17 @@
+# Supabase Edge Functions Configuration
+
+# PayPal Webhook - JWT verification disabled (PayPal doesn't send Supabase JWT)
+[functions.paypal-webhook]
+verify_jwt = false
+
+# PayPal Subscription - JWT verification enabled (requires authenticated user)
+[functions.paypal-subscription]
+verify_jwt = true
+
+# PayPal Setup - JWT verification enabled (admin function)
+[functions.paypal-setup]
+verify_jwt = true
+
+# PayPal Config - JWT verification enabled (admin function)
+[functions.paypal-config]
+verify_jwt = true

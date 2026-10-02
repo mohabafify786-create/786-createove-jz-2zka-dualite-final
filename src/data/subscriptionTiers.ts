@@ -1,0 +1,56 @@
+import { SubscriptionTier } from '../types/subscription';
+
+export const subscriptionTiers: SubscriptionTier[] = [
+  {
+    id: 'weekly',
+    name: 'Weekly',
+    price: 4.99,
+    originalPrice: 9.99,
+    duration: '7 days',
+    durationDays: 7,
+    savings: '50% OFF',
+    features: [
+      'Unlimited messages',
+      'See who\'s online',
+      'Priority in discovery',
+      'Read receipts',
+    ],
+  },
+  {
+    id: 'monthly',
+    name: 'Monthly',
+    price: 14.99,
+    originalPrice: 29.99,
+    duration: '30 days',
+    durationDays: 30,
+    savings: 'Best Value',
+    popular: true,
+    features: [
+      'Unlimited messages',
+      'See who\'s online',
+      'Priority in discovery',
+      'Read receipts',
+      'See who liked you',
+      'Unlimited matches',
+    ],
+  },
+  {
+    id: 'yearly',
+    name: 'Yearly',
+    price: 59.99,
+    originalPrice: 179.99,
+    duration: '365 days',
+    durationDays: 365,
+    savings: 'Save 67%',
+    features: [
+      'Unlimited messages',
+      'See who\'s online',
+      'Priority in discovery',
+      'Read receipts',
+      'See who liked you',
+      'Unlimited matches',
+      'VIP badge',
+      'Exclusive profiles',
+    ],
+  },
+];
