@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Star, Quote, Mail } from 'lucide-react';
+import { Heart, Star, Quote } from 'lucide-react';
 import InfoPageLayout from '../components/InfoPageLayout';
 
 const SuccessStoriesPage: React.FC = () => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Mail, Phone, MapPin, Globe, Shield } from 'lucide-react';
+import { Heart, Mail, Globe, Shield } from 'lucide-react';
+import SupportEmailLink from './SupportEmailLink';
 
 const Footer: React.FC = () => {
   return (
@@ -21,9 +22,12 @@ const Footer: React.FC = () => {
               <a href="#" className="p-2 bg-gray-800 rounded-full hover:bg-heartsync transition-colors">
                 <Globe className="w-4 h-4" />
               </a>
-              <a href="#" className="p-2 bg-gray-800 rounded-full hover:bg-heartsync transition-colors">
+              <SupportEmailLink 
+                aria-label="Email support at supportheartsyncone@gmail.com" 
+                className="p-2 bg-gray-800 rounded-full hover:bg-heartsync transition-colors"
+              >
                 <Mail className="w-4 h-4" />
-              </a>
+              </SupportEmailLink>
               <a href="#" className="p-2 bg-gray-800 rounded-full hover:bg-heartsync transition-colors">
                 <Shield className="w-4 h-4" />
               </a>

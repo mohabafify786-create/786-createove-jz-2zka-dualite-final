@@ -1,6 +1,7 @@
 import React from 'react';
-import { Shield, AlertTriangle, Lock, Eye, UserX, Phone, MapPin, Mail } from 'lucide-react';
+import { Shield, AlertTriangle, Lock, Eye, Phone, MapPin } from 'lucide-react';
 import InfoPageLayout from '../components/InfoPageLayout';
+import SupportEmailLink from '../components/SupportEmailLink';
 
 const safetyTips = [
   {
@@ -93,9 +94,9 @@ const SafetyTipsPage: React.FC = () => {
               <h3 className="font-semibold text-black">We're Here to Help</h3>
               <p className="text-sm text-gray-700 mt-1">
                 If you ever feel unsafe or need assistance, please contact our support team at{' '}
-                <a href="mailto:supportheartsyncone@gmail.com" className="text-heartsync hover:underline">
+                <SupportEmailLink className="text-heartsync hover:underline">
                   supportheartsyncone@gmail.com
-                </a>.
+                </SupportEmailLink>.
                 We take all reports seriously and will investigate promptly.
               </p>
             </div>

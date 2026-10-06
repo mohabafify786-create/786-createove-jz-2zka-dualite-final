@@ -82,7 +82,7 @@ export function useBreakpoint(breakpoints: BreakpointConfig = defaultBreakpoints
  * Hook for detecting touch devices
  */
 export function useTouchDevice(): boolean {
-  const [isTouchDevice, setIsTouchDevice] = useState<boolean>(() => {
+  const [isTouchDevice] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return (
       'ontouchstart' in window ||

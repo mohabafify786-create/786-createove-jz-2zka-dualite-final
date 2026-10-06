@@ -172,7 +172,6 @@ export function generateProfiles(): Profile[] {
   return PROFILE_SEEDS.map((seed, i) => {
     // Use direct image URL from unified array
     const mainPhoto = PROFILE_IMAGES[i];
-    const extraPhotos: string[] = [];
 
     return {
       id: i + 1,

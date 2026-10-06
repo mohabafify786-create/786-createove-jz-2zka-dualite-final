@@ -53,7 +53,7 @@ const ChatPage: React.FC = () => {
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getAutoResponse = (userMessage: string): string => {
+  const getAutoResponse = (_userMessage: string): string => {
     const responses = [
       "you look so fresh and hot 🥵 today are you ready for hottie chat 🫦",
       "Mmm I've been thinking about you all day... 💋",

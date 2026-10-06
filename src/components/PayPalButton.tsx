@@ -157,7 +157,7 @@ const PayPalButton: React.FC<PayPalButtonProps> = ({ plan, amount, onSuccess, on
       if (popup && !popup.closed) {
         try {
           popup.close();
-        } catch (e) {
+        } catch {
           // Ignore close errors
         }
       }

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Lock, Eye, Database, UserCheck, Mail, Calendar, Globe, Smartphone, MessageCircle, Trash2, AlertTriangle } from 'lucide-react';
+import { Shield, Lock, Eye, Database, UserCheck, Mail, Calendar, Globe, Smartphone, MessageCircle, AlertTriangle } from 'lucide-react';
 import InfoPageLayout from '../components/InfoPageLayout';
+import SupportEmailLink from '../components/SupportEmailLink';
 
 const PrivacyPage: React.FC = () => {
   return (
@@ -147,13 +148,12 @@ const PrivacyPage: React.FC = () => {
               To exercise these rights or ask privacy-related questions, contact us at:
             </p>
             <div className="mt-2">
-              <a
-                href="mailto:supportheartsyncone@gmail.com"
+              <SupportEmailLink
                 className="inline-flex items-center gap-2 px-4 py-2 bg-heartsync text-white font-medium rounded-full hover:bg-heartsync-dark transition-colors"
               >
                 <Mail className="w-4 h-4" />
                 supportheartsyncone@gmail.com
-              </a>
+              </SupportEmailLink>
             </div>
           </div>
         </section>
@@ -195,9 +195,9 @@ const PrivacyPage: React.FC = () => {
             </p>
             <div className="p-4 bg-surface-muted rounded-xl mt-2">
               <p className="font-medium text-black">HeartSync Privacy Team</p>
-              <a href="mailto:supportheartsyncone@gmail.com" className="text-heartsync hover:underline">
+              <SupportEmailLink className="text-heartsync hover:underline">
                 supportheartsyncone@gmail.com
-              </a>
+              </SupportEmailLink>
             </div>
           </div>
         </section>

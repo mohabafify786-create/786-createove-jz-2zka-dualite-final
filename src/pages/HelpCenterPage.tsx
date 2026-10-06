@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, MessageCircle, CreditCard, User, Shield, Bell, ChevronRight, Search, HelpCircle, Settings, Heart, AlertCircle } from 'lucide-react';
+import { Mail, MessageCircle, CreditCard, User, Shield, Bell, ChevronRight, HelpCircle, AlertCircle } from 'lucide-react';
 import InfoPageLayout from '../components/InfoPageLayout';
+import SupportEmailLink from '../components/SupportEmailLink';
 
 const helpTopics = [
   { icon: User, title: 'Account Setup', description: 'Creating and managing your HeartSync profile', link: '#account-setup' },
@@ -196,13 +197,12 @@ const HelpCenterPage: React.FC = () => {
                   <p className="text-gray-600 text-sm mb-4">
                     Send us an email and we'll get back to you as soon as possible.
                   </p>
-                  <a
-                    href="mailto:supportheartsyncone@gmail.com"
+                  <SupportEmailLink
                     className="inline-flex items-center gap-2 px-5 py-2.5 bg-heartsync text-white font-semibold rounded-full hover:bg-heartsync-dark transition-colors shadow-lg shadow-heartsync/20"
                   >
                     <Mail className="w-4 h-4" />
                     supportheartsyncone@gmail.com
-                  </a>
+                  </SupportEmailLink>
                 </div>
               </div>
               

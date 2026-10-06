@@ -1,6 +1,7 @@
 import React from 'react';
-import { FileText, CheckCircle, AlertTriangle, Scale, RefreshCw, Users, CreditCard, Shield, Ban, Mail, Bot, Heart } from 'lucide-react';
+import { FileText, CheckCircle, AlertTriangle, Scale, RefreshCw, Users, CreditCard, Shield, Ban, Mail, Bot } from 'lucide-react';
 import InfoPageLayout from '../components/InfoPageLayout';
+import SupportEmailLink from '../components/SupportEmailLink';
 
 const TermsPage: React.FC = () => {
   return (
@@ -175,9 +176,9 @@ const TermsPage: React.FC = () => {
             </p>
             <div className="p-4 bg-surface-muted rounded-xl mt-2">
               <p className="font-medium text-black">HeartSync Support</p>
-              <a href="mailto:supportheartsyncone@gmail.com" className="text-heartsync hover:underline">
+              <SupportEmailLink className="text-heartsync hover:underline">
                 supportheartsyncone@gmail.com
-              </a>
+              </SupportEmailLink>
             </div>
           </div>
         </section>

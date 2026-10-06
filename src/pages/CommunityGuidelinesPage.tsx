@@ -1,6 +1,7 @@
 import React from 'react';
 import { Heart, Users, Shield, MessageCircle, AlertCircle, CheckCircle, Bot } from 'lucide-react';
 import InfoPageLayout from '../components/InfoPageLayout';
+import SupportEmailLink from '../components/SupportEmailLink';
 
 const guidelines = [
   {
@@ -102,7 +103,7 @@ const CommunityGuidelinesPage: React.FC = () => {
           <p className="text-gray-700">
             If you encounter any issues or have questions about these guidelines, 
             please visit our <a href="/help-center" className="text-heartsync hover:underline">Help Center</a> or 
-            contact us at <a href="mailto:supportheartsyncone@gmail.com" className="text-heartsync hover:underline">supportheartsyncone@gmail.com</a>.
+            contact us at <SupportEmailLink className="text-heartsync hover:underline">supportheartsyncone@gmail.com</SupportEmailLink>.
           </p>
         </div>
       </div>

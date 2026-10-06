@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, RefreshCw, Home, Mail } from 'lucide-react';
 import HeartSyncLogo from '../components/HeartSyncLogo';
+import SupportEmailLink from '../components/SupportEmailLink';
 
 interface ErrorPageProps {
   errorCode?: number;
@@ -50,13 +51,12 @@ const ErrorPage: React.FC<ErrorPageProps> = ({
 
         <div className="pt-6 border-t border-gray-200">
           <p className="text-sm text-gray-400 mb-2">Still having issues?</p>
-          <a
-            href="mailto:supportheartsyncone@gmail.com"
+          <SupportEmailLink
             className="inline-flex items-center gap-2 text-heartsync hover:underline text-sm font-medium"
           >
             <Mail className="w-4 h-4" />
             Contact Support
-          </a>
+          </SupportEmailLink>
         </div>
       </div>
     </div>

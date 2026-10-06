@@ -17,7 +17,6 @@ const Navbar: React.FC = () => {
   const subscribed = isActive();
 
   const isAuthPage = location.pathname === '/auth';
-  const isLanding = location.pathname === '/';
 
   const tabs = [
     { path: '/discover', label: t('nav.discover'), icon: Search },
