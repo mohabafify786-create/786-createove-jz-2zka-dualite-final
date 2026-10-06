@@ -90,8 +90,21 @@ const MessagesPage: React.FC = () => {
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
   const [showSub, setShowSub] = useState(false);
-  const [typing, setTyping] = useState(false);
+  const [typingConvId, setTypingConvId] = useState<number | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
+
+  // Track in-flight sends and component mount status to avoid race conditions
+  const pendingConvsRef = useRef<Set<number>>(new Set());
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const isTyping = selectedId !== null && typingConvId === selectedId;
 
   // Ref for the scrollable messages container (not the end marker)
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -116,7 +129,7 @@ const MessagesPage: React.FC = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-  }, [selected?.messages.length, typing]);
+  }, [selected?.messages.length, isTyping]);
 
   useEffect(() => {
     const matchIds: number[] = JSON.parse(localStorage.getItem('heartsync_matches') || '[]');
@@ -148,28 +161,35 @@ const MessagesPage: React.FC = () => {
 
   const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     if (!input.trim() || !selected) return;
+
+    const targetConvId = selected.id;
+    if (pendingConvsRef.current.has(targetConvId)) {
+      return; // Prevent duplicate concurrent sends for the same conversation
+    }
 
     if (!messageRateLimiter.canSend()) {
       setRateLimited(true);
-      setTimeout(() => setRateLimited(false), 5000);
+      setTimeout(() => {
+        if (isMountedRef.current) setRateLimited(false);
+      }, 5000);
       return;
     }
 
-    const convCredits = getUserMessageCount(selected.id);
+    const convCredits = getUserMessageCount(targetConvId);
     if (!subscribed && convCredits >= FREE_MESSAGES) {
       setShowSub(true);
       return;
     }
 
-    if (!canSendMessage(selected.id)) {
+    if (!canSendMessage(targetConvId)) {
       setShowSub(true);
       return;
     }
 
     messageRateLimiter.record();
-    recordMessage(selected.id);
+    recordMessage(targetConvId);
 
     const userMsg: Message = {
       id: Date.now(),
@@ -179,8 +199,9 @@ const MessagesPage: React.FC = () => {
       read: false,
     };
     const newUserMsgCount = selected.userMsgCount + 1;
+    const profileId = selected.profile.id;
 
-    updateConversation(selected.id, (c) => ({
+    updateConversation(targetConvId, (c) => ({
       ...c,
       messages: [...c.messages, userMsg],
       userMsgCount: newUserMsgCount,
@@ -189,32 +210,52 @@ const MessagesPage: React.FC = () => {
 
     const userText = input.trim();
     setInput('');
+    pendingConvsRef.current.add(targetConvId);
+    setTypingConvId(targetConvId);
 
-    const aiResult = getAIResponse(userText, newUserMsgCount, subscribed);
+    try {
+      const aiResult = await getAIResponse(userText, newUserMsgCount, subscribed, profileId, targetConvId);
 
-    if (aiResult.triggerSubscription) {
-      setTimeout(() => setShowSub(true), 600);
-      return;
-    }
+      if (!isMountedRef.current) return;
 
-    if (aiResult.text) {
-      setTyping(true);
-      const delay = 1200 + Math.random() * 1200;
-      setTimeout(() => {
-        setTyping(false);
-        const botMsg: Message = {
-          id: Date.now() + 1,
-          text: aiResult.text,
-          time: now(),
-          sent: false,
-          read: true,
-        };
-        updateConversation(selected.id, (c) => ({
-          ...c,
-          messages: [...c.messages, botMsg],
-          lastActivity: Date.now(),
-        }));
-      }, delay);
+      if (aiResult.triggerSubscription) {
+        pendingConvsRef.current.delete(targetConvId);
+        setTypingConvId((curr) => (curr === targetConvId ? null : curr));
+        setTimeout(() => {
+          if (isMountedRef.current) setShowSub(true);
+        }, 600);
+        return;
+      }
+
+      if (aiResult.text) {
+        const delay = 600 + Math.random() * 600;
+        setTimeout(() => {
+          if (!isMountedRef.current) return;
+          pendingConvsRef.current.delete(targetConvId);
+          setTypingConvId((curr) => (curr === targetConvId ? null : curr));
+
+          const botMsg: Message = {
+            id: Date.now() + 1,
+            text: aiResult.text,
+            time: now(),
+            sent: false,
+            read: true,
+          };
+          updateConversation(targetConvId, (c) => ({
+            ...c,
+            messages: [...c.messages, botMsg],
+            lastActivity: Date.now(),
+          }));
+        }, delay);
+      } else {
+        pendingConvsRef.current.delete(targetConvId);
+        setTypingConvId((curr) => (curr === targetConvId ? null : curr));
+      }
+    } catch {
+      if (isMountedRef.current) {
+        pendingConvsRef.current.delete(targetConvId);
+        setTypingConvId((curr) => (curr === targetConvId ? null : curr));
+      }
     }
   }, [input, selected, subscribed, canSendMessage, recordMessage, getUserMessageCount, updateConversation]);
 
@@ -382,7 +423,7 @@ const MessagesPage: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                {typing && (
+                {isTyping && (
                   <div className="flex justify-start">
                     <div className="bg-white rounded-2xl rounded-bl-md shadow-sm px-4 py-3">
                       <div className="flex gap-1">

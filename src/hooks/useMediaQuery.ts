@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 export interface BreakpointConfig {
   sm: number;
@@ -146,12 +146,12 @@ export function useWindowSize() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const handleResize = useCallback(() => {
+    const handleResize = () => {
       setSize({
         width: window.innerWidth,
         height: window.innerHeight,
       });
-    }, []);
+    };
 
     // Throttle resize events
     let timeoutId: ReturnType<typeof setTimeout>;

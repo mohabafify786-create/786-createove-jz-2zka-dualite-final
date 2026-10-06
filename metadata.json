@@ -1,0 +1,7 @@
+{
+  "name": "HeartSync",
+  "description": "AI-powered dating platform connecting users with smart matching and real-time chat.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

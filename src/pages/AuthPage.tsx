@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, ArrowRight, Loader2, Mail, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Loader2, Mail, AlertCircle, Sparkles } from 'lucide-react';
 import HeartSyncLogo from '../components/HeartSyncLogo';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -16,8 +16,15 @@ const AuthPage: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const { login, register } = useAuth();
+  const { login, register, loginAsDemo } = useAuth();
   const { t } = useLanguage();
+
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    await loginAsDemo();
+    setLoading(false);
+    navigate('/discover');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,6 +222,22 @@ const AuthPage: React.FC = () => {
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
+              </button>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="flex-shrink mx-3 text-xs text-gray-400">or explore immediately</span>
+                <div className="flex-grow border-t border-gray-200"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                disabled={loading}
+                className="w-full py-3 bg-surface-muted hover:bg-surface-hover text-gray-700 font-semibold rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+              >
+                <Sparkles className="w-4 h-4 text-heartsync" />
+                <span>Instant Demo Login</span>
               </button>
             </form>
           </div>

@@ -61,8 +61,6 @@ function ScrollToTop() {
 
 // App routes
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
-  
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Navbar />
