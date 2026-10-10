@@ -297,7 +297,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (error) {
-        console.error('[Auth] Login error:', serializeError(error));
+        console.warn('[Auth] Login error:', serializeError(error));
 
         const supabaseError = error as AuthError & { code?: string };
         let errorMessage: string;
@@ -364,7 +364,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (error) {
-        console.error('[Auth] Registration error:', serializeError(error));
+        console.warn('[Auth] Registration error:', serializeError(error));
         return {
           success: false,
           error: error.message.includes('already registered')

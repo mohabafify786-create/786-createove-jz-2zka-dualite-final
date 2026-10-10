@@ -259,9 +259,12 @@ const MessagesPage: React.FC = () => {
     }
   }, [input, selected, subscribed, canSendMessage, recordMessage, getUserMessageCount, updateConversation]);
 
-  const filtered = conversations
-    .filter((c) => c.profile.name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => b.lastActivity - a.lastActivity);
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return conversations
+      .filter((c) => c.profile.name.toLowerCase().includes(q))
+      .sort((a, b) => b.lastActivity - a.lastActivity);
+  }, [conversations, search]);
 
   const userCredits = selected ? getUserMessageCount(selected.id) : 0;
   const canType = subscribed || userCredits < FREE_MESSAGES;
@@ -349,7 +352,8 @@ const MessagesPage: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setSelectedId(null)}
-                    className="md:hidden p-1.5 hover:bg-surface-muted rounded-full transition-colors"
+                    className="md:hidden p-2.5 -ml-1 hover:bg-surface-muted rounded-full transition-colors flex items-center justify-center min-w-[40px] min-h-[40px]"
+                    aria-label="Back to conversations"
                   >
                     <ArrowLeft className="w-5 h-5" />
                   </button>

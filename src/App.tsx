@@ -33,6 +33,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/auth" replace />;
 }
 
+// Route for root '/': if authenticated, directly open Discover; otherwise show LandingPage
+function HomeRoute() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/discover" replace /> : <LandingPage />;
+}
+
+// Route for '/auth': if already authenticated, directly open Discover; otherwise show AuthPage
+function AuthRoute() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/discover" replace /> : <AuthPage />;
+}
+
 // Scroll to top on route change
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -52,8 +64,8 @@ function AppRoutes() {
       <main className="flex-grow">
         <Routes>
             {/* Public routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/" element={<HomeRoute />} />
+            <Route path="/auth" element={<AuthRoute />} />
             <Route path="/help-center" element={<HelpCenterPage />} />
             <Route path="/safety-tips" element={<SafetyTipsPage />} />
             <Route path="/community-guidelines" element={<CommunityGuidelinesPage />} />

@@ -12,6 +12,15 @@ const port = parseInt(process.env.PORT || '3000', 10);
 
 app.use(express.json());
 
+// Standard security headers
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
+  next();
+});
+
 app.post('/api/chat', async (req, res) => {
   const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
   if (!checkServerRateLimit(clientIp)) {
@@ -37,8 +46,20 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
+    // Immutable caching for hashed assets
+    app.use('/assets', express.static(path.resolve(__dirname, 'dist', 'assets'), {
+      maxAge: '1y',
+      immutable: true,
+    }));
+    app.use(express.static(path.resolve(__dirname, 'dist'), {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+      },
+    }));
     app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }

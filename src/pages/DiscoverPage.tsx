@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { Heart, X, Star, MapPin, Briefcase, Sparkles, CheckCircle, ChevronUp } from 'lucide-react';
@@ -23,6 +23,17 @@ const DiscoverPage: React.FC = () => {
   const { t } = useLanguage();
 
   const current = currentIdx < profiles.length ? profiles[currentIdx] : null;
+
+  // Preload upcoming profile photos to eliminate swiping lag
+  useEffect(() => {
+    const nextBatch = profiles.slice(currentIdx + 1, currentIdx + 3);
+    for (const p of nextBatch) {
+      if (p.photo) {
+        const preloadImg = new Image();
+        preloadImg.src = p.photo;
+      }
+    }
+  }, [currentIdx, profiles]);
 
   const y = useMotionValue(0);
   const x = useMotionValue(0);
@@ -155,7 +166,8 @@ const DiscoverPage: React.FC = () => {
                 y, 
                 rotateZ,
                 scale: isDragging ? scale : 1,
-                touchAction: 'none'
+                touchAction: 'none',
+                willChange: 'transform',
               }}
               drag
               dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
