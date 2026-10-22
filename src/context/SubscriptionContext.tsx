@@ -3,6 +3,8 @@ import { SubscriptionPlan, SubscriptionState } from '../types/subscription';
 import { subscriptionTiers } from '../data/subscriptionTiers';
 import { supabase } from '../lib/supabase';
 
+import { cancelSubscription as cancelSubscriptionApi } from '../services/paypalApi';
+
 interface ConversationCredits {
   [conversationId: number]: number;
 }
@@ -10,9 +12,10 @@ interface ConversationCredits {
 interface SubscriptionContextType {
   subscription: SubscriptionState;
   subscribe: (plan: SubscriptionPlan, paymentVerified: boolean) => boolean;
+  cancelSubscription: () => Promise<{ success: boolean; message: string }>;
   isActive: () => boolean;
   checkSubscription: () => boolean;
-  canSendMessage: (conversationId: number) => boolean;
+  canSendMessage: (conversationId?: number) => boolean;
   recordMessage: (conversationId: number) => void;
   getUserMessageCount: (conversationId: number) => number;
   decrementMessages: () => void;
@@ -118,10 +121,11 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       const now = new Date().toISOString();
 
       // Query user_subscriptions — RLS ensures we only see our own rows
+      // Both active and cancelled subscriptions retain access until end_date if payment completed
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select('website_plan_id, status, payment_status, end_date')
-        .eq('status', 'active')
+        .in('status', ['active', 'cancelled'])
         .eq('payment_status', 'completed')
         .gt('end_date', now)
         .order('end_date', { ascending: false })
@@ -309,11 +313,25 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
     return isActive();
   }, [isActive]);
 
-  const canSendMessage = useCallback((conversationId: number): boolean => {
+  const canSendMessage = useCallback((conversationId?: number): boolean => {
     if (isActive()) return true;
-    const used = credits[conversationId] || 0;
+    const cid = conversationId ?? 0;
+    const used = credits[cid] || 0;
     return used < FREE_MESSAGES;
   }, [isActive, credits]);
+
+  const cancelSubscription = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await cancelSubscriptionApi();
+      if (res.success) {
+        await verifySubscriptionFromServer();
+        return { success: true, message: res.message || 'Auto-renewal has been cancelled.' };
+      }
+      return { success: false, message: res.error || res.message || 'Failed to cancel auto-renewal.' };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : 'Error cancelling subscription.' };
+    }
+  }, [verifySubscriptionFromServer]);
 
   const recordMessage = useCallback((conversationId: number) => {
     if (!isActive()) {
@@ -358,6 +376,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       value={{
         subscription,
         subscribe,
+        cancelSubscription,
         isActive,
         checkSubscription,
         canSendMessage,

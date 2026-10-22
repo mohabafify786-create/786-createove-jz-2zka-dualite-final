@@ -309,7 +309,8 @@ Deno.serve(async (req: Request) => {
 
     try {
       const resource = payload.resource;
-      const subscriptionId = resource.id || resource.subscription_id;
+      // In PayPal, PAYMENT.SALE.* has subscription ID in billing_agreement_id; BILLING.SUBSCRIPTION.* has it in id
+      const subscriptionId = resource.billing_agreement_id || resource.subscription_id || resource.id;
       const userId = resource.custom_id || resource.subscriber?.custom_id;
 
       if (!subscriptionId) {
@@ -319,7 +320,40 @@ Deno.serve(async (req: Request) => {
       console.log("[PayPal Webhook] Processing:", payload.event_type, "for subscription:", subscriptionId);
 
       switch (payload.event_type) {
-        case "BILLING.SUBSCRIPTION.CREATED":
+        case "BILLING.SUBSCRIPTION.CREATED": {
+          console.log("[PayPal Webhook] BILLING.SUBSCRIPTION.CREATED received for:", subscriptionId);
+          // Subscription is created but NOT yet approved or activated. Keep pending.
+          const { data: existingSub } = await supabase
+            .from("user_subscriptions")
+            .select("id")
+            .eq("paypal_subscription_id", subscriptionId)
+            .maybeSingle();
+
+          if (!existingSub && userId) {
+            const planId = resource.plan_id;
+            const { data: planData } = await supabase
+              .from("paypal_plans")
+              .select("*")
+              .eq("paypal_plan_id", planId)
+              .maybeSingle();
+
+            await supabase
+              .from("user_subscriptions")
+              .insert({
+                user_id: userId,
+                paypal_subscription_id: subscriptionId,
+                paypal_plan_id: planId,
+                website_plan_id: planData?.website_plan_id || "monthly",
+                status: "pending",
+                payment_status: "pending",
+                amount: planData?.price,
+                currency: planData?.currency || "USD",
+              });
+          }
+          processed = true;
+          break;
+        }
+
         case "BILLING.SUBSCRIPTION.ACTIVATED": {
           const planId = resource.plan_id;
           
@@ -331,7 +365,7 @@ Deno.serve(async (req: Request) => {
             .maybeSingle();
 
           const durationDays = planData?.duration_days || 30;
-          const startDate = new Date();
+          const startDate = resource.start_time ? new Date(resource.start_time) : new Date();
           const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
           // Check if subscription already exists
@@ -341,27 +375,46 @@ Deno.serve(async (req: Request) => {
             .eq("paypal_subscription_id", subscriptionId)
             .maybeSingle();
 
+          // Authoritative Payment Confirmation Check on Activation
+          const lastPaymentVal = resource.billing_info?.last_payment?.amount?.value ? parseFloat(resource.billing_info.last_payment.amount.value) : 0;
+          const failedPayments = resource.billing_info?.failed_payments_count || 0;
+          const isInitialPaymentConfirmed = lastPaymentVal > 0 && failedPayments === 0;
+
           if (existingSub) {
-            // Update existing subscription
+            // If already active, preserve end_date and update next billing date
+            const updatePayload: Record<string, unknown> = {
+              status: "active",
+              updated_at: new Date().toISOString(),
+            };
+
+            if (isInitialPaymentConfirmed || existingSub.payment_status === "completed") {
+              updatePayload.payment_status = "completed";
+            } else {
+              updatePayload.payment_status = "pending";
+            }
+
+            if (resource.billing_info?.next_billing_time) {
+              updatePayload.next_billing_date = resource.billing_info.next_billing_time;
+            }
+
+            if (!existingSub.end_date || existingSub.status !== "active") {
+              updatePayload.start_date = startDate.toISOString();
+              updatePayload.end_date = endDate.toISOString();
+            }
+
             const { error: updateError } = await supabase
               .from("user_subscriptions")
-              .update({
-                status: "active",
-                payment_status: "completed",
-                start_date: startDate.toISOString(),
-                end_date: endDate.toISOString(),
-                next_billing_date: resource.billing_info?.next_billing_time || null,
-                updated_at: new Date().toISOString(),
-              })
+              .update(updatePayload)
               .eq("paypal_subscription_id", subscriptionId);
 
             if (updateError) {
               throw new Error(`Failed to update subscription: ${updateError.message}`);
             }
             
-            console.log("[PayPal Webhook] Updated existing subscription:", subscriptionId);
+            console.log("[PayPal Webhook] Activated existing subscription:", subscriptionId, "payment_status:", updatePayload.payment_status);
           } else if (userId) {
-            // Create new subscription
+            // Create new active subscription row
+            const newPaymentStatus = isInitialPaymentConfirmed ? "completed" : "pending";
             const { error: createError } = await supabase
               .from("user_subscriptions")
               .insert({
@@ -370,9 +423,10 @@ Deno.serve(async (req: Request) => {
                 paypal_plan_id: planId,
                 website_plan_id: planData?.website_plan_id || "monthly",
                 status: "active",
-                payment_status: "completed",
+                payment_status: newPaymentStatus,
                 start_date: startDate.toISOString(),
                 end_date: endDate.toISOString(),
+                next_billing_date: resource.billing_info?.next_billing_time || null,
                 amount: planData?.price,
                 currency: planData?.currency || "USD",
               });
@@ -381,17 +435,17 @@ Deno.serve(async (req: Request) => {
               throw new Error(`Failed to create subscription: ${createError.message}`);
             }
             
-            console.log("[PayPal Webhook] Created new subscription for user:", userId);
+            console.log("[PayPal Webhook] Created new active subscription for user:", userId, "payment_status:", newPaymentStatus);
           } else {
-            console.warn("[PayPal Webhook] No user ID found for new subscription");
+            console.warn("[PayPal Webhook] No user ID found for activated subscription");
           }
           
           processed = true;
           break;
         }
 
-        case "BILLING.SUBSCRIPTION.CANCELLED":
-        case "BILLING.SUBSCRIPTION.EXPIRED": {
+        case "BILLING.SUBSCRIPTION.CANCELLED": {
+          // Cancel auto-renewal in DB. The customer retains access until the end_date has passed.
           const { error: cancelError } = await supabase
             .from("user_subscriptions")
             .update({
@@ -404,7 +458,25 @@ Deno.serve(async (req: Request) => {
             throw new Error(`Failed to cancel subscription: ${cancelError.message}`);
           }
           
-          console.log("[PayPal Webhook] Cancelled subscription:", subscriptionId);
+          console.log("[PayPal Webhook] Cancelled auto-renewal for subscription:", subscriptionId);
+          processed = true;
+          break;
+        }
+
+        case "BILLING.SUBSCRIPTION.EXPIRED": {
+          const { error: expireError } = await supabase
+            .from("user_subscriptions")
+            .update({
+              status: "expired",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("paypal_subscription_id", subscriptionId);
+
+          if (expireError) {
+            throw new Error(`Failed to expire subscription: ${expireError.message}`);
+          }
+          
+          console.log("[PayPal Webhook] Expired subscription:", subscriptionId);
           processed = true;
           break;
         }
@@ -446,29 +518,150 @@ Deno.serve(async (req: Request) => {
         }
 
         case "PAYMENT.SALE.COMPLETED": {
-          const { error: paymentError } = await supabase
-            .from("user_subscriptions")
-            .update({
-              payment_status: "completed",
-              updated_at: new Date().toISOString(),
-            })
-            .eq("paypal_subscription_id", subscriptionId);
+          const saleId = resource.id;
+          const saleState = resource.state;
+          console.log("[PayPal Webhook] PAYMENT.SALE.COMPLETED for sale:", saleId, "subscription:", subscriptionId, "state:", saleState);
 
-          if (paymentError) {
-            throw new Error(`Failed to update payment status: ${paymentError.message}`);
+          if (saleState && saleState.toLowerCase() !== "completed") {
+            console.warn("[PayPal Webhook] Sale state is not completed:", saleState);
+            processed = true;
+            break;
           }
-          
-          console.log("[PayPal Webhook] Payment completed for subscription:", subscriptionId);
+
+          if (!subscriptionId) {
+            console.warn("[PayPal Webhook] Missing subscription ID for sale:", saleId);
+            processed = true;
+            break;
+          }
+
+          // 2. Fetch target subscription to obtain plan metadata and duration
+          const { data: sub } = await supabase
+            .from("user_subscriptions")
+            .select("*")
+            .eq("paypal_subscription_id", subscriptionId)
+            .maybeSingle();
+
+          let durationDays = 30;
+          if (sub) {
+            const { data: planData } = await supabase
+              .from("paypal_plans")
+              .select("duration_days")
+              .eq("paypal_plan_id", sub.paypal_plan_id)
+              .maybeSingle();
+
+            durationDays = planData?.duration_days || (sub.website_plan_id === "weekly" ? 7 : sub.website_plan_id === "yearly" ? 365 : 30);
+          }
+
+          const saleAmount = resource.amount?.total || resource.amount?.value ? parseFloat(resource.amount?.total || resource.amount?.value) : (sub?.amount || null);
+          const saleCurrency = resource.amount?.currency || resource.amount?.currency_code || sub?.currency || "USD";
+
+          // 3. ATOMIC TRANSACTION: Call PostgreSQL RPC function with row locking (FOR UPDATE)
+          // This eliminates race conditions: two concurrent webhooks cannot extend end_date twice.
+          let rpcSuccess = false;
+          try {
+            const { data: rpcRows, error: rpcError } = await supabase.rpc("process_subscription_sale", {
+              p_sale_id: saleId,
+              p_subscription_id: subscriptionId,
+              p_amount: saleAmount,
+              p_currency: saleCurrency,
+              p_duration_days: durationDays,
+              p_event_id: payload.id,
+            });
+
+            if (!rpcError && rpcRows && rpcRows.length > 0) {
+              const res = rpcRows[0];
+              if (res.success) {
+                rpcSuccess = true;
+                if (res.already_processed) {
+                  console.log("[PayPal Webhook] Sale already processed (RPC atomic idempotency skip):", saleId);
+                } else {
+                  console.log("[PayPal Webhook] Sale processed atomically via RPC. New end_date:", res.end_date);
+                }
+              } else {
+                console.warn("[PayPal Webhook] RPC reported error:", res.error_message);
+              }
+            } else if (rpcError) {
+              console.warn("[PayPal Webhook] RPC execution error (falling back to ledger-first transaction):", rpcError);
+            }
+          } catch (rpcCallErr) {
+            console.warn("[PayPal Webhook] RPC invocation exception:", rpcCallErr);
+          }
+
+          // 4. CONCURRENCY-SAFE FALLBACK: If RPC is unavailable, enforce LEDGER INSERTION FIRST
+          if (!rpcSuccess && sub) {
+            // Check if sale already exists
+            const { data: existingSale } = await supabase
+              .from("subscription_payments")
+              .select("id")
+              .eq("paypal_sale_id", saleId)
+              .maybeSingle();
+
+            if (existingSale) {
+              console.log("[PayPal Webhook] Sale already recorded in ledger (idempotent skip):", saleId);
+              processed = true;
+              break;
+            }
+
+            // Insert into ledger FIRST. The unique constraint on paypal_sale_id guarantees
+            // that two concurrent executions cannot both proceed to extend the subscription.
+            const { error: ledgerError } = await supabase
+              .from("subscription_payments")
+              .insert({
+                paypal_subscription_id: subscriptionId,
+                paypal_sale_id: saleId,
+                event_id: payload.id,
+                amount: saleAmount,
+                currency: saleCurrency,
+                status: "completed",
+              });
+
+            if (ledgerError) {
+              if (ledgerError.code === "23505" || ledgerError.message?.includes("duplicate")) {
+                console.log("[PayPal Webhook] Concurrent sale insert collision caught safely:", saleId);
+                processed = true;
+                break;
+              }
+              throw new Error(`Failed to record payment in ledger: ${ledgerError.message}`);
+            }
+
+            // Ledger insertion succeeded: now safely update user_subscriptions
+            const subEndDate = sub.end_date ? new Date(sub.end_date).getTime() : 0;
+            const baseTime = subEndDate > Date.now() ? subEndDate : Date.now();
+            const renewedEndDate = new Date(baseTime + durationDays * 86400000);
+
+            const { error: updateSubError } = await supabase
+              .from("user_subscriptions")
+              .update({
+                status: "active",
+                payment_status: "completed",
+                start_date: sub.start_date || new Date().toISOString(),
+                end_date: renewedEndDate.toISOString(),
+                amount: saleAmount || sub.amount,
+                currency: saleCurrency,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", sub.id);
+
+            if (updateSubError) {
+              throw new Error(`Failed to update subscription end_date: ${updateSubError.message}`);
+            }
+
+            console.log("[PayPal Webhook] Updated subscription end_date via ledger-first fallback to:", renewedEndDate.toISOString());
+          }
+
           processed = true;
           break;
         }
 
         case "PAYMENT.SALE.REFUNDED":
         case "PAYMENT.SALE.REVERSED": {
+          const refundStatus = payload.event_type === "PAYMENT.SALE.REFUNDED" ? "refunded" : "reversed";
+          console.log("[PayPal Webhook] Payment refunded/reversed for subscription:", subscriptionId);
+
           const { error: refundError } = await supabase
             .from("user_subscriptions")
             .update({
-              payment_status: payload.event_type === "PAYMENT.SALE.REFUNDED" ? "refunded" : "reversed",
+              payment_status: refundStatus,
               status: "cancelled",
               updated_at: new Date().toISOString(),
             })
@@ -477,8 +670,20 @@ Deno.serve(async (req: Request) => {
           if (refundError) {
             throw new Error(`Failed to update refund status: ${refundError.message}`);
           }
-          
-          console.log("[PayPal Webhook] Payment refunded/reversed for subscription:", subscriptionId);
+
+          // Mark payment row as refunded
+          const originalSaleId = resource.sale_id || resource.id;
+          if (originalSaleId) {
+            try {
+              await supabase
+                .from("subscription_payments")
+                .update({ status: refundStatus })
+                .eq("paypal_sale_id", originalSaleId);
+            } catch (recErr) {
+              console.warn("[PayPal Webhook] Could not update payment record status:", recErr);
+            }
+          }
+
           processed = true;
           break;
         }

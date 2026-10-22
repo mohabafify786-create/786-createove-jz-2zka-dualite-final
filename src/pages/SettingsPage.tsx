@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, LogOut, Trash2, AlertTriangle, X, Check, Loader2, CheckCircle } from 'lucide-react';
+import { Globe, LogOut, Trash2, AlertTriangle, X, Check, Loader2, CheckCircle, Crown, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSubscription } from '../context/SubscriptionContext';
 import { useLanguage, Language } from '../context/LanguageContext';
 
 const LANGUAGES = [
@@ -16,6 +17,7 @@ const LANGUAGES = [
 const SettingsPage: React.FC = () => {
   const { logout, deleteAccount } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const { isActive, subscription, getRemainingDays, cancelSubscription } = useSubscription();
   const navigate = useNavigate();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -23,6 +25,10 @@ const SettingsPage: React.FC = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const [showCancelSubConfirm, setShowCancelSubConfirm] = useState(false);
+  const [isCancellingSub, setIsCancellingSub] = useState(false);
+  const [cancelSubMessage, setCancelSubMessage] = useState<string | null>(null);
 
   const handleLanguageChange = (langCode: Language) => {
     setLanguage(langCode);
@@ -117,6 +123,46 @@ const SettingsPage: React.FC = () => {
             ))}
           </select>
         </div>
+
+        {/* Subscription Management */}
+        {isActive() && (
+          <div className="card p-5 mb-4 border border-yellow-200 bg-gradient-to-br from-white to-amber-50/30">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-black">
+                    HeartSync {subscription.plan ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1) : 'Premium'}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {getRemainingDays()} days of premium access remaining
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-semibold px-2.5 py-1 bg-green-100 text-green-700 rounded-full">
+                Active
+              </span>
+            </div>
+
+            {cancelSubMessage && (
+              <div className="mb-3 p-2.5 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700">
+                {cancelSubMessage}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+              <span className="text-xs text-gray-500">Auto-renewal & billing</span>
+              <button
+                onClick={() => setShowCancelSubConfirm(true)}
+                className="text-xs font-semibold text-heartsync hover:text-heartsync-dark hover:underline transition-colors"
+              >
+                Cancel Auto-Renewal
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Sign Out */}
         <div className="card p-5 mb-4">
@@ -218,6 +264,68 @@ const SettingsPage: React.FC = () => {
                     </>
                   ) : (
                     <span>{t('buttons.delete')}</span>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Cancel Subscription Confirmation Modal */}
+        {showCancelSubConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => !isCancellingSub && setShowCancelSubConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mx-auto mb-4">
+                <ShieldAlert className="w-8 h-8 text-amber-600" />
+              </div>
+
+              <h2 className="text-xl font-bold text-black text-center mb-2">
+                Cancel Auto-Renewal?
+              </h2>
+
+              <p className="text-gray-600 text-center text-sm mb-4 leading-relaxed">
+                You will retain all premium features until your current period ends ({getRemainingDays()} days remaining). You will not be charged again.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCancelSubConfirm(false)}
+                  disabled={isCancellingSub}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Keep Subscription
+                </button>
+                <button
+                  onClick={async () => {
+                    setIsCancellingSub(true);
+                    const res = await cancelSubscription();
+                    setIsCancellingSub(false);
+                    setShowCancelSubConfirm(false);
+                    setCancelSubMessage(res.message);
+                    setTimeout(() => setCancelSubMessage(null), 8000);
+                  }}
+                  disabled={isCancellingSub}
+                  className="flex-1 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isCancellingSub ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Cancelling...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Cancel</span>
                   )}
                 </button>
               </div>

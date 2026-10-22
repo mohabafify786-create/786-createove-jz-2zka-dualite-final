@@ -1,0 +1,629 @@
+HEARTSYNC — FULL PAYPAL, SUBSCRIPTION, WEBHOOK & PREMIUM ACCESS AUDIT
+
+ROLE AND MISSION
+
+Act as a Senior Full-Stack Engineer, Payment Systems Engineer, QA Automation Engineer, and Application Security Auditor.
+
+You are auditing the existing production-intended codebase of HeartSync, an AI-powered character chat and interactive roleplay platform.
+
+Your mission is to perform a comprehensive, evidence-based audit of the entire upgrade, checkout, PayPal payment, subscription lifecycle, webhook processing, cancellation, expiration, renewal, and premium feature-entitlement system.
+
+This is a pre-marketing release gate. I need confidence that paying customers will receive exactly what they purchased, that subscription access is enforced correctly, and that payment or lifecycle failures will not silently break the customer experience.
+
+Do not assume anything works merely because a checkout page loads or a payment appears successful. Inspect the actual implementation, follow the complete execution paths, run appropriate tests, and report verifiable evidence.
+
+Do not merely recommend adding better prompts, generic error handling, or more tests. Investigate the real code and identify concrete defects, missing logic, race conditions, security vulnerabilities, and configuration problems.
+
+---
+
+1. NON-NEGOTIABLE WORKING RULES
+
+1. Inspect the existing project before proposing changes.
+2. Identify the actual framework, language, routing, database, authentication system, subscription implementation, PayPal SDK/API integration, webhook endpoint, and deployment configuration.
+3. Trace the real code paths from the Upgrade button to the final server-side entitlement checks.
+4. Do not invent files, functions, database fields, endpoints, environment variables, or API capabilities. Verify them in the repository.
+5. Preserve the existing architecture and coding conventions unless a concrete defect justifies a change.
+6. Do not replace working functionality unnecessarily or rewrite the entire payment system without evidence.
+7. Make changes only when justified by verified findings. Keep changes focused, maintainable, and backward-compatible where possible.
+8. Never expose, print, commit, or include live PayPal secrets, access tokens, private keys, database credentials, or sensitive customer information in reports.
+9. Never use real customer payments to test the system. Prefer PayPal Sandbox and isolated test accounts.
+10. Never perform destructive production database operations, modify live subscriptions, issue real refunds, cancel actual customer subscriptions, or deploy changes without explicit authorization.
+11. Do not claim a test passed unless it was actually executed and its result verified.
+12. If credentials, environment configuration, external access, or test infrastructure are unavailable, clearly identify the limitation and provide a safe verification procedure.
+13. Do not disable security controls, bypass payment verification, or grant premium access manually just to make tests pass.
+14. Distinguish confirmed defects from suspected risks and unverified assumptions.
+15. If a critical issue is discovered, fix it when safely possible, add a regression test, and rerun relevant tests.
+16. If a safe fix requires a business decision or a potentially breaking migration, explain the decision required before making that change.
+
+2. PHASE ONE — MAP THE EXISTING PAYMENT ARCHITECTURE
+
+Before modifying anything, inspect and document:
+
+- The Upgrade buttons and subscription pricing UI.
+- The three existing subscription plans and their actual identifiers, prices, currencies, and durations.
+- The frontend checkout initiation logic.
+- Backend endpoints responsible for creating PayPal orders or subscriptions.
+- PayPal SDK integration and API version.
+- PayPal plan IDs, product IDs, billing intervals, and environment selection.
+- The payment approval and return/cancel URLs.
+- Server-side payment capture or subscription activation logic.
+- The PayPal webhook endpoint and event-processing logic.
+- Database models, schemas, migrations, and records for users, subscriptions, payments, entitlements, and cancellation state.
+- Authentication and authorization checks.
+- Premium feature access checks in the backend.
+- Frontend logic that displays premium features.
+- Subscription expiration, renewal, cancellation, and failed-payment handling.
+- Background jobs, scheduled tasks, queues, or cron jobs that maintain subscription state.
+- Existing tests, logs, error handling, and monitoring.
+- Relevant environment variables and deployment settings, without exposing their secret values.
+
+Create a concise architecture map that identifies the actual files and functions involved in each stage.
+
+Trace at least one complete path through the code:
+
+Upgrade click → plan selection → server-side checkout creation → PayPal approval → verified payment/subscription state → webhook processing → database update → entitlement evaluation → premium access.
+
+If multiple paths exist, audit each one.
+
+Do not proceed on assumptions about how the existing integration works. Establish whether it uses PayPal Orders, PayPal Subscriptions, or a combination, and audit the corresponding flow.
+
+3. PHASE TWO — AUDIT THE THREE PLANS
+
+Identify the exact three plans currently configured in HeartSync.
+
+Do not invent plan names, prices, benefits, or billing periods. Extract them from the existing code, database, configuration, or PayPal dashboard integration where accessible.
+
+Create a plan matrix containing:
+
+- Plan identifier and display name.
+- Price and currency.
+- Billing frequency.
+- Intended subscription duration or renewal behavior.
+- Included features.
+- Feature limits, if any.
+- PayPal product/plan identifier.
+- Corresponding internal entitlement configuration.
+- Current implementation status.
+- Discrepancies between the frontend, backend, database, and PayPal configuration.
+
+Verify that the UI, server, and PayPal configuration agree.
+
+The browser must never be trusted to determine the price, selected PayPal plan, subscription duration, or benefits granted to the customer. The server must validate the selected plan against trusted configuration.
+
+Reject manipulated, nonexistent, inactive, or unauthorized plan identifiers.
+
+Verify that changing client-side request parameters cannot cause a customer to purchase one plan while receiving another plan's benefits.
+
+4. PHASE THREE — PAYPAL CHECKOUT AND PAYMENT VERIFICATION
+
+Audit the complete checkout flow for all three plans.
+
+Verify:
+
+1. The Upgrade button initiates the correct checkout flow.
+2. The correct plan, price, currency, and billing configuration are used.
+3. Checkout creation occurs on the server where required.
+4. PayPal approval is handled correctly.
+5. Payment capture or subscription activation follows the actual integration model.
+6. A success redirect alone never grants premium access.
+7. A client-side success flag or manipulated request cannot grant premium access.
+8. Payment status is verified through a trusted server-side mechanism.
+9. The correct PayPal order, capture, or subscription ID is associated with the correct authenticated user.
+10. An order or subscription belonging to another user cannot activate access for the current user.
+11. Rejected, cancelled, pending, declined, or incomplete payments do not grant paid access.
+12. Duplicate clicks do not create unintended duplicate purchases or subscriptions.
+13. Loading indicators and disabled controls behave correctly during checkout.
+14. Network failures, timeouts, repeated requests, and browser refreshes do not create inconsistent states.
+15. Users receive clear and accurate feedback for success, cancellation, pending payment, and failure.
+16. Currency and amounts are validated against trusted server-side plan configuration.
+17. Sensitive credentials remain on the server and are never exposed to the browser.
+18. Sandbox and live environments cannot accidentally be mixed.
+
+Inspect whether the implementation uses the correct PayPal API operations and verification mechanisms for its integration model.
+
+If the system uses PayPal Subscriptions, distinguish subscription approval from the actual billing and activation state. Do not assume that approval alone proves a successful payment.
+
+If the system uses one-time orders to implement recurring billing, verify how renewals are actually implemented rather than assuming PayPal automatically renews them.
+
+Deliver a list of every confirmed defect, its severity, the affected files, the exact failure scenario, and the appropriate fix.
+
+5. PHASE FOUR — WEBHOOK RELIABILITY AND SECURITY
+
+Perform a thorough audit of the PayPal webhook implementation.
+
+Inspect:
+
+- The webhook URL and endpoint routing.
+- The configured PayPal webhook ID.
+- Signature verification using PayPal's supported verification mechanism.
+- Handling of raw request bodies and required headers.
+- Correct use of Sandbox versus Live credentials and webhook IDs.
+- Event-type routing.
+- Event payload validation.
+- Database transaction boundaries.
+- Error responses and retry behavior.
+- Duplicate event handling.
+- Out-of-order event delivery.
+- Logging and observability.
+- Failure recovery and reconciliation.
+
+Verify that webhook authenticity is established before a webhook is allowed to change payment or entitlement state.
+
+Never trust an incoming JSON payload merely because it contains a plausible PayPal event ID or subscription ID.
+
+Implement or verify idempotency using a persistent event-processing mechanism. Reprocessing the same webhook must not create duplicate subscriptions, duplicate benefits, duplicate payment records, or repeated entitlement changes.
+
+Handle duplicate and out-of-order events safely. Do not blindly let an old event overwrite a newer, authoritative subscription state.
+
+Verify the actual event types relevant to the integration, using the applicable PayPal documentation and the configured webhook subscriptions.
+
+Depending on the integration, investigate relevant events such as:
+
+- "BILLING.SUBSCRIPTION.ACTIVATED"
+- "BILLING.SUBSCRIPTION.UPDATED"
+- "BILLING.SUBSCRIPTION.CANCELLED"
+- "BILLING.SUBSCRIPTION.SUSPENDED"
+- "BILLING.SUBSCRIPTION.EXPIRED"
+- "PAYMENT.SALE.COMPLETED"
+- "PAYMENT.SALE.DENIED"
+- "PAYMENT.SALE.REFUNDED"
+- "PAYMENT.CAPTURE.COMPLETED"
+- "PAYMENT.CAPTURE.DENIED"
+- "PAYMENT.CAPTURE.REFUNDED"
+- Relevant payment-failure or subscription-payment-failure events supported by the actual integration.
+
+These are investigation candidates, not a requirement to subscribe to every event regardless of API model.
+
+For each relevant event, document the expected state transition and test the implementation.
+
+Ensure webhook processing:
+
+- Returns appropriate HTTP responses.
+- Avoids acknowledging an event as successfully processed before durable processing has occurred.
+- Uses safe retries or recoverable processing where appropriate.
+- Prevents replay or duplicate-processing problems.
+- Does not leak secrets or full sensitive payloads into logs.
+- Can recover from temporary database or downstream failures.
+
+If the implementation lacks a reliable way to reconcile internal state with PayPal's authoritative state, document and implement an appropriate reconciliation mechanism when feasible.
+
+6. PHASE FIVE — EXACT FEATURE ENTITLEMENTS FOR EACH PLAN
+
+This is one of the most important parts of the audit.
+
+Build an explicit entitlement matrix from the actual three plans and the benefits promised in the current product UI.
+
+Use this conceptual example only to illustrate the requirement:
+
+- Weekly plan: features A and B.
+- Monthly plan: features A, B, and C.
+- Annual plan: features A, B, C, and D.
+
+Replace these placeholders with the real features and entitlements found in the codebase.
+
+For each plan, verify that:
+
+1. Every promised feature is granted after verified payment and the required subscription state is reached.
+2. No feature outside the plan's entitlement set is accidentally granted.
+3. The frontend correctly reflects the customer's active entitlements.
+4. The backend independently enforces the same entitlements.
+5. Restricted API routes cannot be accessed by manipulating frontend state.
+6. Hidden buttons, disabled components, or client-side flags are not the only protection for premium functionality.
+7. The plan identifier is mapped to the correct entitlement set on the server.
+8. A user cannot change their own plan or entitlements by editing local storage, cookies, request payloads, or browser JavaScript.
+9. A downgrade removes access to benefits no longer included when the applicable downgrade takes effect.
+10. An upgrade grants additional benefits only when the upgrade has been validated and is effective.
+11. A user cannot gain benefits by replaying an old successful checkout URL or reusing another customer's payment identifier.
+12. Existing customers retain the correct entitlements after login, logout, browser refresh, and session renewal.
+
+Create automated tests that verify the exact expected feature set for each of the three plans.
+
+Test both positive and negative access cases. It is not sufficient to prove that the correct features appear in the UI; prove that unauthorized backend requests are rejected.
+
+If entitlements are based on usage limits, verify the limits, reset intervals, concurrency behavior, and enforcement against repeated or parallel requests.
+
+7. PHASE SIX — SUBSCRIPTION LIFECYCLE AND EXPIRATION
+
+Audit the actual billing model and implement the correct lifecycle behavior for all three plans.
+
+The intended durations for this product are:
+
+- Weekly: 7 days.
+- Monthly: 30 days.
+- Annual: 360 days.
+
+These are the intended product-access durations specified for this audit. Verify whether they match the actual PayPal billing configuration and existing product promises.
+
+IMPORTANT: A PayPal calendar-month billing interval is not necessarily equivalent to exactly 30 days, and a calendar-year interval is not necessarily equivalent to exactly 360 days.
+
+Do not silently change the PayPal billing agreement or charge schedule to force these durations. First determine the existing billing model and whether the requested access duration can be implemented consistently with the actual payment agreement.
+
+For each plan, test:
+
+Weekly subscription
+
+- Correct activation after verified payment.
+- Correct effective start and expiration timestamps.
+- Continued access during the valid period.
+- Correct handling of expiration at seven days, according to the chosen duration semantics.
+- Expired-access restrictions and renewal prompt.
+
+Monthly subscription
+
+- Correct activation after verified payment.
+- Correct 30-day access period if this is the intended and disclosed product behavior.
+- Continued access during the valid period.
+- Correct expiration and renewal prompt.
+
+Annual subscription
+
+- Correct activation after verified payment.
+- Correct 360-day access period if this is the intended and disclosed product behavior.
+- Continued access during the valid period.
+- Correct expiration and renewal prompt.
+
+Use timezone-safe timestamps and a consistent authoritative time source. Avoid comparing date-only strings or relying on the user's browser clock to decide whether paid access has expired.
+
+Verify that the application does not accidentally extend access because:
+
+- The user refreshes the page.
+- The user logs in from another device.
+- The frontend retains an old subscription state.
+- A webhook is delivered late.
+- A background job fails.
+- The user modifies the local clock.
+- A renewal request is replayed.
+
+The backend must enforce expiration even if a scheduled cleanup job has not run.
+
+If the subscription renews automatically through PayPal, access must follow the verified renewal and billing state, not simply the passage of time.
+
+If the product uses fixed-duration access without automatic renewal, implement and document that model explicitly.
+
+8. PHASE SEVEN — SUBSCRIPTION PANEL AND RENEWAL UX
+
+Verify the complete customer experience when a subscription approaches expiration or expires.
+
+When the user's paid access expires and no valid paid entitlement remains:
+
+- The account must reflect the expired or inactive state.
+- Premium API access must be denied immediately according to the application's authoritative expiration rules.
+- The appropriate Subscription panel must appear.
+- The panel must explain that the subscription has expired and offer an appropriate renewal or plan-selection action.
+- Renewal must use a valid checkout flow and must not restore premium access before the new purchase or renewal is verified.
+- The user should not lose unrelated account data unless the product's disclosed policy explicitly provides otherwise.
+- The user should receive clear feedback if the renewal attempt fails or remains pending.
+
+For HeartSync specifically, verify the expected behavior for previously contacted AI characters and existing conversations.
+
+If the product promises continued access to previously contacted characters while subscribed, test that access. When the subscription expires, enforce the actual disclosed product policy: show the renewal panel and restrict the relevant premium interactions as intended, without silently deleting conversation history.
+
+Do not invent an entitlement policy for stored conversation history. Identify the existing behavior and compare it with the product's actual promises.
+
+Test the panel at the exact expiration boundary and after page refresh, a new login, and navigation to a premium route.
+
+Verify that the panel does not incorrectly appear for a valid, paid, unexpired subscription.
+
+9. PHASE EIGHT — CANCELLATION, RENEWAL, AND BILLING FAILURES
+
+Determine whether customers can cancel subscriptions through the current implementation.
+
+Verify:
+
+- Whether the application has a working cancellation control.
+- Whether cancellation is implemented through the correct PayPal API or supported customer flow.
+- Whether the user is authorized to cancel only their own subscription.
+- Whether confirmation is shown before a potentially consequential action.
+- Whether the cancellation request is reflected in PayPal and the internal database.
+- Whether the result is reconciled if the API request succeeds but the database update fails.
+- Whether repeated cancellation requests are safe.
+- Whether cancellation is idempotent.
+- Whether the UI accurately communicates the effective cancellation date.
+- Whether the customer retains paid access until the already-paid-through date when the actual subscription terms provide that behavior.
+- Whether cancellation prevents future renewal as intended.
+- Whether reactivation is supported, and whether it follows PayPal's actual rules.
+
+Do not assume cancellation means immediate expiration. Distinguish between cancellation of future renewal and immediate termination of current access.
+
+Also audit:
+
+- Successful automatic renewal.
+- Failed renewal payment.
+- Delayed payment confirmation.
+- Suspended subscriptions.
+- Expired subscriptions.
+- Refunds and chargebacks where supported.
+- Upgrade and downgrade transitions.
+- Repeated payment notifications.
+- A user who has more than one historical subscription.
+- A user who attempts to purchase while another subscription is active.
+
+Make the final behavior consistent with the actual billing agreement and disclosed product policy.
+
+10. PHASE NINE — DATABASE CONSISTENCY AND CONCURRENCY
+
+Inspect the database model and persistence layer for race conditions and inconsistent states.
+
+Verify that:
+
+- A subscription belongs to the correct user.
+- PayPal IDs are associated with the correct internal records.
+- Appropriate uniqueness constraints exist where necessary.
+- Duplicate webhook events cannot create duplicate active subscriptions.
+- Concurrent checkout requests do not create unintended duplicate purchases.
+- Database transactions protect related state changes where supported.
+- Payment records and entitlement records cannot drift silently.
+- Failed operations leave recoverable states rather than partially activated subscriptions.
+- Renewal events do not accidentally overwrite unrelated subscription records.
+- Historical payment records remain auditable.
+- Migrations are safe and reversible where appropriate.
+
+Where useful, create automated tests for concurrent requests and duplicate event delivery.
+
+11. PHASE TEN — PERFORMANCE, ERRORS, AND CUSTOMER EXPERIENCE
+
+Investigate real performance risks in the purchase and activation path.
+
+Check for:
+
+- Unnecessary sequential API calls.
+- Repeated database queries.
+- Slow or blocking webhook handlers.
+- Excessive polling.
+- Infinite loading indicators.
+- Duplicate event listeners or repeated requests.
+- Missing request timeouts.
+- Unhandled promise rejections.
+- Incorrect retries.
+- Race conditions between the checkout return page and webhook processing.
+- Slow entitlement lookups.
+- Errors caused by missing user or subscription data.
+- Broken mobile layouts or unusable payment controls.
+- Poor recovery after refreshing or closing the checkout page.
+
+Run the available test suite and use targeted integration tests to reproduce relevant failures.
+
+Measure latency where the environment permits it. Do not label the system "fast" or "lag-free" without actual measurements.
+
+Define practical performance expectations for:
+
+- Checkout initiation.
+- Checkout return handling.
+- Entitlement activation after authoritative confirmation.
+- Premium API authorization.
+- Webhook processing.
+
+Do not block the customer indefinitely while waiting for a webhook. If confirmation is delayed, show a clear pending state and use a safe mechanism to refresh or reconcile the payment status.
+
+12. PHASE ELEVEN — SECURITY AUDIT
+
+Audit the payment system for common security vulnerabilities, including:
+
+- Broken access control.
+- IDOR vulnerabilities.
+- Forged payment-success requests.
+- Unverified webhook requests.
+- Subscription ID manipulation.
+- Price manipulation.
+- Unauthorized plan upgrades.
+- Client-side entitlement tampering.
+- Replay attacks and duplicate processing.
+- CSRF where applicable.
+- Insecure session handling.
+- Secret leakage.
+- Sensitive information in logs.
+- Unsafe redirects.
+- Webhook denial-of-service or resource-exhaustion risks.
+- Improper handling of untrusted PayPal event data.
+- Privilege escalation through subscription or user metadata.
+
+Never use a live third-party payment account or real customer data to test security vulnerabilities.
+
+Write regression tests for any confirmed security defects that can be safely tested.
+
+13. PHASE TWELVE — AUTOMATED TEST PLAN
+
+Create or improve tests using the project's existing testing framework.
+
+Do not introduce an entirely new testing framework unless the existing project genuinely requires it.
+
+At minimum, cover the following scenarios:
+
+Checkout and payment
+
+1. Weekly purchase succeeds.
+2. Monthly purchase succeeds.
+3. Annual purchase succeeds.
+4. User cancels checkout.
+5. Payment is declined.
+6. Payment remains pending.
+7. Payment verification fails.
+8. User refreshes the return page.
+9. Client sends a forged success flag.
+10. User attempts to purchase a manipulated plan or price.
+
+Webhooks
+
+11. Valid webhook is processed.
+12. Invalid webhook signature is rejected.
+13. Duplicate webhook is processed idempotently.
+14. Webhook arrives out of order.
+15. Database temporarily fails during processing.
+16. Webhook is retried.
+17. An event for one customer cannot change another customer's subscription.
+
+Entitlements
+
+18. Weekly plan grants exactly its configured features.
+19. Monthly plan grants exactly its configured features.
+20. Annual plan grants exactly its configured features.
+21. A free user cannot access premium endpoints.
+22. An expired user cannot access restricted premium endpoints.
+23. A user cannot access features belonging to a higher plan.
+24. A valid subscription remains usable after refresh and re-login.
+25. An upgrade or downgrade produces the correct entitlement set.
+
+Lifecycle
+
+26. Weekly access expires after the configured seven-day period.
+27. Monthly access expires after the configured 30-day period.
+28. Annual access expires after the configured 360-day period.
+29. The expiration panel appears when appropriate.
+30. The expiration panel does not appear prematurely.
+31. Cancellation prevents future renewal as intended.
+32. Cancellation does not incorrectly revoke already-paid access when access should continue.
+33. Successful renewal restores or continues access correctly.
+34. Failed renewal follows the actual disclosed grace-period and access policy.
+35. Refunds or chargebacks follow the supported business rules.
+36. A duplicate purchase or repeated event does not grant unintended additional access.
+
+Use fake timers or an injectable clock for expiration tests instead of waiting days or months.
+
+Use PayPal Sandbox for external integration tests when credentials and configuration are available. Mock external API calls for deterministic unit tests, but do not treat mocked tests as proof that real PayPal integration works.
+
+For each test, report whether it was executed and passed, failed, was skipped, or could not be run.
+
+14. PHASE THIRTEEN — PAYPAL SANDBOX END-TO-END VERIFICATION
+
+If Sandbox access is available, create a safe test plan for the three plans.
+
+For each plan:
+
+1. Start from an authenticated test customer.
+2. Open the actual Upgrade UI.
+3. Initiate the real Sandbox checkout flow.
+4. Complete the approval flow using an authorized Sandbox buyer account.
+5. Verify the resulting payment or subscription state through the appropriate trusted PayPal API and webhook mechanisms.
+6. Confirm the correct internal database state.
+7. Confirm that precisely the intended entitlements become available.
+8. Verify premium backend endpoints.
+9. Test cancellation and renewal behavior supported by the integration.
+10. Simulate expiration safely using the application's test clock or controlled test data.
+11. Verify the expiration panel and renewal flow.
+12. Confirm that logs and database records do not expose secrets or sensitive payment details.
+
+Keep Sandbox and Live configuration strictly separated.
+
+Never use real money merely to demonstrate that a test passed.
+
+If live-mode readiness is reviewed, verify configuration and operational readiness without creating a real charge or modifying a real customer's subscription.
+
+15. PHASE FOURTEEN — FIXES AND REGRESSION VERIFICATION
+
+After the initial audit:
+
+1. Present the confirmed findings and recommended fixes.
+2. Apply safe, targeted fixes where possible.
+3. Add regression tests for corrected defects.
+4. Run the relevant tests again.
+5. Run the project's existing lint, type-check, build, and test commands where available.
+6. Inspect the final diff for unrelated changes, leaked secrets, accidental configuration changes, and regressions.
+7. Identify database migrations and deployment steps, if any.
+8. Do not deploy to production or execute destructive operations without explicit authorization.
+
+If you cannot safely complete a fix, provide the exact blocker and the next required action.
+
+Do not conceal failed tests or downgrade critical findings simply to produce a passing report.
+
+16. REQUIRED FINAL REPORT
+
+Return a detailed, evidence-based audit report with the following sections:
+
+A. Executive Summary
+
+State whether the current payment and subscription system is ready for marketing.
+
+Use one of these verdicts:
+
+- READY: All required critical flows have been verified and no release-blocking defects remain.
+- READY WITH CONDITIONS: No known critical blocker remains, but specified noncritical or operational requirements must be addressed.
+- NOT READY: One or more release-blocking issues remain.
+- INCONCLUSIVE: Essential verification could not be completed because of missing credentials, unavailable environments, incomplete code, or other blockers.
+
+B. Architecture Map
+
+List the actual relevant files, functions, endpoints, and database models.
+
+C. Three-Plan Comparison
+
+Show the actual plans, prices, durations, PayPal identifiers, and entitlement sets discovered in the project. Mark anything that could not be verified.
+
+D. Findings
+
+For each finding, include:
+
+- Severity: Critical, High, Medium, or Low.
+- Status: Confirmed, Suspected, or Unverified.
+- Evidence and affected files.
+- Reproduction steps or failure scenario.
+- Customer/business impact.
+- Recommended or implemented fix.
+- Regression test and result.
+
+E. PayPal and Webhook Report
+
+Explain what was verified, which event types are handled, how authenticity and idempotency are enforced, and what remains untested.
+
+F. Entitlement Verification Matrix
+
+For every plan, list each promised feature and whether it is correctly granted and enforced on the backend.
+
+Include negative tests proving that users cannot obtain unauthorized benefits.
+
+G. Lifecycle Matrix
+
+Document activation, renewal, cancellation, expiration, refunds, failed payments, and renewal-panel behavior.
+
+H. Performance and Reliability
+
+Provide actual test measurements when available. Separate measured results from estimates and unverified assumptions.
+
+I. Test Results
+
+List the tests executed, passed, failed, skipped, or blocked. Include the actual commands and concise relevant output.
+
+J. Changes Made
+
+List every modified file, the reason for the change, and any database migration or deployment requirement.
+
+K. Remaining Risks and Manual Actions
+
+List every unresolved blocker and the precise action required to resolve it.
+
+L. Final Release Gate
+
+Answer each question explicitly:
+
+1. Does PayPal checkout work for all three plans?
+2. Is payment verified securely on the server?
+3. Are webhook signatures verified correctly?
+4. Is webhook processing idempotent and recoverable?
+5. Does each plan grant exactly its intended features?
+6. Are premium endpoints protected server-side?
+7. Does cancellation work correctly?
+8. Do renewals work according to the configured billing model?
+9. Does each plan expire according to its actual, disclosed duration?
+10. Does the subscription panel appear at the correct time?
+11. Are duplicate requests, failed payments, and delayed webhooks handled safely?
+12. Have the important flows been tested in PayPal Sandbox?
+13. Are there any release-blocking issues before marketing begins?
+
+Answer every question with PASS, FAIL, or NOT VERIFIED, followed by a concise evidence-based explanation.
+
+DEFINITION OF DONE
+
+The audit is complete only when:
+
+- The actual architecture has been traced.
+- All three plans have been checked.
+- Payment verification and webhook security have been reviewed.
+- Exact entitlement rules have been tested.
+- Cancellation, renewal, and expiration behavior have been reviewed.
+- The renewal panel has been tested.
+- Important failure and security cases have been covered.
+- Relevant automated tests have been executed where possible.
+- Confirmed defects have been fixed safely or clearly documented.
+- Remaining blockers are explicit.
+- The final readiness verdict reflects the evidence, not assumptions.
+
+Begin by inspecting the repository and mapping the existing implementation. Do not start by rewriting code. Perform the audit in phases, preserve working functionality, and report concrete evidence throughout.

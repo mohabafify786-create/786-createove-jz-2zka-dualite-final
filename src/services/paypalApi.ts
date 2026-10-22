@@ -315,9 +315,13 @@ export async function captureSubscription(
   subscriptionId: string
 ): Promise<CaptureSubscriptionResponse> {
   try {
-    const result = await invokeEdgeFunction("paypal-subscription/status", undefined, "GET") as {
+    const query = subscriptionId ? `?subscriptionId=${encodeURIComponent(subscriptionId)}` : '';
+    const result = await invokeEdgeFunction(`paypal-subscription${query}`, undefined, "GET") as {
       isSubscribed?: boolean;
       paypalSubscriptionId?: string;
+      status?: string;
+      payment_status?: string;
+      message?: string;
     };
 
     const isSubscribed = result.isSubscribed || false;
@@ -326,8 +330,8 @@ export async function captureSubscription(
     return {
       success: isSubscribed,
       subscriptionId: paypalSubId,
-      status: isSubscribed ? "ACTIVE" : "PENDING",
-      message: isSubscribed ? "Subscription active" : "Subscription pending",
+      status: result.status || (isSubscribed ? "ACTIVE" : "PENDING"),
+      message: result.message || (isSubscribed ? "Subscription active" : "Subscription pending"),
     };
   } catch (error) {
     return {
@@ -340,9 +344,26 @@ export async function captureSubscription(
   }
 }
 
+export async function cancelSubscription(): Promise<{ success: boolean; message: string; error?: string }> {
+  try {
+    const result = await invokeEdgeFunction("paypal-subscription", { action: "cancel" }, "POST") as {
+      success: boolean;
+      message: string;
+      error?: string;
+    };
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to cancel subscription",
+      error: String(error),
+    };
+  }
+}
+
 export async function getSubscriptionStatus(): Promise<PayPalSubscriptionStatus> {
   try {
-    const result = await invokeEdgeFunction("paypal-subscription/status", undefined, "GET") as PayPalSubscriptionStatus;
+    const result = await invokeEdgeFunction("paypal-subscription", undefined, "GET") as PayPalSubscriptionStatus;
     return result;
   } catch {
     return {
